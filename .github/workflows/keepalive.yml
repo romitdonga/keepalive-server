@@ -1,8 +1,8 @@
-name: Render Multi Keep-Alive Ping
+name: Multi Keep-Alive Ping
 
 on:
   schedule:
-    # Every 14 minutes (UTC). Filter IST hours inside the job.
+    # Every 10 minutes (UTC). Filter IST hours inside the job.
     - cron: '*/14 * * * *'
   # Manual trigger for testing (Actions tab > Run workflow)
   workflow_dispatch:
@@ -10,7 +10,7 @@ on:
       dry_run:
         description: 'Dry run? (No actual pings)'
         required: false
-        default: false 
+        default: false
         type: boolean
 
 jobs:
@@ -24,7 +24,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          # Removed cache: 'npm' to avoid lockfile requirement—fine for small deps
 
       - name: Install dependencies
         run: npm install
