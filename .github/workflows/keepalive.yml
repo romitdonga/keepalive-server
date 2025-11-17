@@ -2,7 +2,7 @@ name: Multi Keep-Alive Ping
 
 on:
   schedule:
-    # Every 10 minutes (UTC). Filter IST hours inside the job.
+    # Every 14 minutes (UTC). Filter IST hours inside the job.
     - cron: '*/14 * * * *'
   # Manual trigger for testing (Actions tab > Run workflow)
   workflow_dispatch:
@@ -24,7 +24,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          # Removed cache: 'npm' to avoid lockfile requirement—fine for small deps
+          # No cache: 'npm'—avoids lockfile requirement for simple installs
 
       - name: Install dependencies
         run: npm install
