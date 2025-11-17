@@ -1,0 +1,72 @@
+name: Render Multi Keep-Alive Ping
+
+on:
+  schedule:
+    # Every 14 minutes (UTC). Filter IST hours inside the job.
+    - cron: '*/14 * * * *'
+  # Manual trigger for testing (Actions tab > Run workflow)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run? (No actual pings)'
+        required: false
+        default: false 
+        type: boolean
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check time and ping services
+        env:
+          SERVICES: ${{ secrets.SERVICES }}  # Comma-separated URLs from repo secret
+          DRY_RUN: ${{ inputs.dry_run || false }}
+        run: |
+          # Validate secret
+          if [ -z "$SERVICES" ]; then
+            echo "Error: No SERVICES secret set! Add comma-separated URLs in repo Settings > Secrets."
+            exit 1
+          fi
+          
+          # Split comma-separated URLs into array (bash: IFS=',' read -ra URLS <<< "$SERVICES")
+          IFS=',' read -ra URLS <<< "$SERVICES"
+          
+          # Get current time in IST (UTC+5:30)
+          CURRENT_IST=$(TZ=Asia/Kolkata date +"%H:%M")
+          HOUR=${CURRENT_IST%:*}
+          MIN=${CURRENT_IST#*:}
+          
+          # Minutes since midnight
+          CURRENT_MINUTES=$((10 * HOUR + MIN))
+          START_MINUTES=540  # 9:00 AM = 9*60
+          END_MINUTES=1320   # 10:00 PM = 22*60 (exclusive, so < 1320)
+          
+          echo "Current IST time: $CURRENT_IST (minutes: $CURRENT_MINUTES)"
+          echo "Active window: 9:00 AM - 10:00 PM IST ($START_MINUTES to $END_MINUTES minutes)"
+          echo "Services to ping: ${URLS[*]}"
+          
+          if [ $CURRENT_MINUTES -ge $START_MINUTES ] && [ $CURRENT_MINUTES -lt $END_MINUTES ]; then
+            echo "Within active hours: Pinging all services..."
+            node -e "
+              const { pingKeepAlive } = require('./keepAlive.js');
+              const urls = [${URLS[*]/%/\'\'}].map(u => u.replace(/^\'+|\\\'+$/g, ''));
+              pingKeepAlive(urls, process.env.DRY_RUN === 'true').catch(console.error);
+            "
+          else
+            echo "Outside active hours (10:00 PM - 9:00 AM IST): Skipping pings to allow spin-down."
+            for url in "${URLS[@]}"; do
+              echo "DRY RUN: Would ping $url"
+            done
+          fi
