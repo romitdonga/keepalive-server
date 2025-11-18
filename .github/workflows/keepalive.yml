@@ -48,8 +48,8 @@ jobs:
           HOUR=${CURRENT_IST%:*}
           MIN=${CURRENT_IST#*:}
           
-          # Minutes since midnight
-          CURRENT_MINUTES=$((10 * HOUR + MIN))
+          # Minutes since midnight (force base-10 to avoid leading-zero octal)
+          CURRENT_MINUTES=$((60 * 10#$HOUR + 10#$MIN))
           START_MINUTES=540  # 9:00 AM = 9*60
           END_MINUTES=1320   # 10:00 PM = 22*60 (exclusive, so < 1320)
           
@@ -61,8 +61,9 @@ jobs:
             echo "Within active hours: Pinging all services..."
             node -e "
               const { pingKeepAlive } = require('./keepAlive.js');
-              const urls = [${URLS[*]/%/\'\'}].map(u => u.replace(/^\'+|\\\'+$/g, ''));
-              pingKeepAlive(urls, process.env.DRY_RUN === 'true').catch(console.error);
+              const urls = (process.env.SERVICES || '').split(',').map(s => s.trim()).filter(Boolean);
+              const dry = process.env.DRY_RUN === 'true';
+              pingKeepAlive(urls, dry).catch(err => { console.error(err); process.exit(1); });
             "
           else
             echo "Outside active hours (10:00 PM - 9:00 AM IST): Skipping pings to allow spin-down."
