@@ -3,7 +3,7 @@ name: Multi Keep-Alive Ping
 on:
   schedule:
     # Every 14 minutes (UTC). Filter IST hours inside the job.
-    - cron: '*/14 * * * *'
+    - cron: '*/9 * * * *'
   # Manual trigger for testing (Actions tab > Run workflow)
   workflow_dispatch:
     inputs:
